@@ -17,8 +17,4 @@
         android:layout_marginTop="5dp"
         android:text="Hello World!" />
 
-    <ImageView
-        android:layout_width="100dp"
-        android:layout_height="100dp" />
-
 </FrameLayout>
