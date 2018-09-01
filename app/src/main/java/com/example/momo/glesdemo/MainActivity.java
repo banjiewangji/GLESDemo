@@ -10,6 +10,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import com.example.momo.glesdemo.gles.EGL14Wrapper;
+import com.example.momo.glesdemo.gles.GLES20Drawer;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,7 +26,16 @@ public class MainActivity extends AppCompatActivity {
     private void initView() {
         final SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
         final SurfaceHolder holder = surfaceView.getHolder();
-        holder.addCallback(new SurfaceHolder.Callback() {
+        holder.addCallback(new SurfaceHolder.Callback2() {
+
+            long startTime = 0L;
+
+            @Override
+            public void surfaceRedrawNeeded(SurfaceHolder holder) {
+                final long current = System.currentTimeMillis();
+                Log.e("forTest", "surfaceRedrawNeeded time:" + (current - startTime));
+                startTime = current;
+            }
 
             private RenderThread mRenderThread;
 
@@ -55,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
         private volatile boolean mRunning = true;
         private volatile long mLastTime = 0L;
 
+        private GLES20Drawer drawer = null;
+
         private RenderThread(Surface surface) {
             mSurface = surface;
         }
@@ -62,18 +74,28 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             ensureEgl(mSurface);
-            while (mRunning) {
+
+            while (true) {
                 try {
-                    Thread.sleep(16);
+                    Thread.sleep(10);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                mEglScreen.makeCurrent();
-                render();
-                mEglScreen.swapBuffer();
+                if (mRunning) {
+                    mEglScreen.makeCurrent();
+                    render();
+                    mEglScreen.swapBuffer();
+                } else {
+                    break;
+                }
             }
 
             releaseEgl();
+
+            if (drawer != null) {
+                drawer.release();
+                drawer = null;
+            }
         }
 
         public void exit() {
@@ -89,10 +111,13 @@ public class MainActivity extends AppCompatActivity {
 
         private void render() {
             final long start = SystemClock.uptimeMillis();
-            Log.i("forTest", "render used time:" + (start - mLastTime));
+            Log.e("forTest", "render used time:" + (start - mLastTime));
             mLastTime = start;
-            GLES20.glClearColor(1f, 0f, 0f, 1f);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+            if (drawer == null) {
+                drawer = new GLES20Drawer();
+            }
+            drawer.draw();
         }
 
         private void releaseEgl() {
