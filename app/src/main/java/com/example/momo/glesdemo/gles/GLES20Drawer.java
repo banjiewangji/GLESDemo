@@ -1,6 +1,8 @@
 package com.example.momo.glesdemo.gles;
 
+import android.graphics.Bitmap;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -16,18 +18,37 @@ public class GLES20Drawer {
      * 定义顶点数据
      */
     private float[] vertexPoints = {
-            -1f, 1f, 0f,    // 0
-            -1f, -1f, 0f,   // 1
-            1f, -1f, 0f,    // 2
-            1f, 1f, 0f      // 3
+            -1f, -1f, 0f,   // 0
+            1f, -1f, 0f,    // 1
+            -1f, 1f, 0f,    // 2
+            1f, 1f, 0f,     // 3
+    };
+
+    /**
+     * 定义纹理坐标
+     */
+    private float[] texturePoints = {
+            0f, 0f,   // 0
+            1f, 0f,   // 1
+            0f, 1f,   // 2
+            1f, 1f    // 3
+    };
+
+    /**
+     * 定义纹理坐标
+     */
+    private float[] texturePoints_90 = {
+            0f, 1f,   // 0
+            1f, 1f,   // 1
+            0f, 0f,   // 2
+            1f, 0f    // 3
     };
 
     /**
      * 定义顶点索引
      */
     private short[] vertexIndexs = {
-            0, 1, 2,    // 第一个三角形
-            0, 2, 3     // 第二个三角形
+            0, 1, 2, 3
     };
 
     /**
@@ -38,6 +59,16 @@ public class GLES20Drawer {
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
             .put(vertexPoints)
+            .position(0);
+
+    /**
+     * 定义纹理坐标缓冲
+     */
+    private Buffer mtextureBuffer = ByteBuffer
+            .allocateDirect(vertexPoints.length * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .put(texturePoints_90)
             .position(0);
 
     /**
@@ -54,9 +85,12 @@ public class GLES20Drawer {
      * 定义顶点着色器语言
      */
     private static final String vertexShader =
-            "attribute vec4 vPosition;" +
-                    "void main() {" +
-                    "gl_Position = vPosition;" +
+            "attribute vec4 vPosition;\n" +
+                    "attribute vec2 a_textureCoord;\n" +
+                    "varying vec2 v_textureCoord;\n" +
+                    "void main() {\n" +
+                    "v_textureCoord = a_textureCoord;\n" +
+                    "gl_Position = vPosition;\n" +
                     "}";
 
     /**
@@ -69,9 +103,14 @@ public class GLES20Drawer {
                     "#else \n" +
                     "precision mediump float;\n" +
                     "#endif \n" +
+                    "varying vec2 v_textureCoord;\n" +
+                    "uniform sampler2D texture1;\n" +
+                    "uniform sampler2D texture2;\n" +
                     "uniform vec4 vColor;\n" +
+
                     "void main() {" +
-                    "gl_FragColor = vColor;" +
+                        "gl_FragColor = mix(texture2D(texture1, v_textureCoord), texture2D(texture2, v_textureCoord), vColor.z);" +
+//                        "gl_FragColor = texture2D(texture2, v_textureCoord);" +
                     "}";
 
     private boolean initialized = false;
@@ -80,11 +119,30 @@ public class GLES20Drawer {
     private int mProgramHandle;
 
     private int mPositionHandle;
+    private int mTexCoordHandle;
+
     private int mColorHandle;
+    private int mTexture1Handle;
+    private int mTexture2Handle;
+
+    private Bitmap mBitmap1;
+    private Bitmap mBitmap2;
+    private boolean isSettedImage1;
+    private boolean isSettedImage2;
+    private int[] mTextureIds;
+
+    public void setTexture1(Bitmap texture) {
+        mBitmap1 = texture;
+    }
+
+    public void setTexture2(Bitmap texture) {
+        mBitmap2 = texture;
+    }
 
     public void draw() {
         if (!initialized) {
             initGLES();
+            initTexture();
             GLES20.glViewport(0, 0, 720, 1280);
             initialized = true;
         }
@@ -124,9 +182,23 @@ public class GLES20Drawer {
 
         initShaderHandles();
 
-        GLES20.glUseProgram(mProgramHandle);
-
         GLES20.glClearColor(1f, 0f, 0f, 1f);
+    }
+
+    private void initTexture() {
+        mTextureIds = new int[2];
+        GLES20.glGenTextures(2, mTextureIds, 0);
+
+        for (int i = 0; i < mTextureIds.length; i++) {
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + i);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureIds[i]);
+
+            GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, GLES20.GL_TRUE);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        }
     }
 
     private int loadShader(int type, String code) {
@@ -150,17 +222,21 @@ public class GLES20Drawer {
 
     private void bindShaderAttributes() {
         GLES20.glBindAttribLocation(mVertexShaderHandle, 0, "vPosition");
+        GLES20.glBindAttribLocation(mVertexShaderHandle, 0, "a_textureCoord");
     }
 
     private void initShaderHandles() {
         mPositionHandle = GLES20.glGetAttribLocation(mProgramHandle, "vPosition");
+        mTexCoordHandle = GLES20.glGetAttribLocation(mProgramHandle, "a_textureCoord");
+        mTexture1Handle = GLES20.glGetUniformLocation(mProgramHandle, "texture1");
+        mTexture2Handle = GLES20.glGetUniformLocation(mProgramHandle, "texture2");
         mColorHandle = GLES20.glGetUniformLocation(mProgramHandle, "vColor");
     }
 
     private void onDraw() {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
         passShaderValues();
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLE_STRIP, 4, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
     }
 
     private float delta = 0.01f;
@@ -170,15 +246,34 @@ public class GLES20Drawer {
 
     private void passShaderValues() {
         GLES20.glUseProgram(mProgramHandle);
+
         GLES20.glVertexAttribPointer(mPositionHandle, 3, GLES20.GL_FLOAT, false, 12, mPointBuffer);
         GLES20.glEnableVertexAttribArray(mPositionHandle);
+
+        GLES20.glVertexAttribPointer(mTexCoordHandle, 2, GLES20.GL_FLOAT, false, 8, mtextureBuffer);
+        GLES20.glEnableVertexAttribArray(mTexCoordHandle);
 
         mRed = (mRed + delta) % 1f;
 
 //        color[0] = mRed;
 
-        GLES20.glUniform4f(mColorHandle, mRed, 0.0f, 0.0f, 1.0f);
-//        GLES20.glUniform4fv(mColorHandle, 1, color, 0);
+        GLES20.glUniform4f(mColorHandle, 0.0f, 0.0f, mRed, 1.0f);
+        GLES20.glUniform1i(mTexture1Handle, 0);
+        GLES20.glUniform1i(mTexture2Handle, 1);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureIds[0]);
+        if (!isSettedImage1 && mBitmap1 != null && !mBitmap1.isRecycled()) {
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, mBitmap1, 0);
+            isSettedImage1 = true;
+        }
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureIds[1]);
+        if (!isSettedImage2 && mBitmap2 != null && !mBitmap2.isRecycled()) {
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, mBitmap2, 0);
+            isSettedImage2 = true;
+        }
     }
 
     public void release() {
@@ -194,6 +289,9 @@ public class GLES20Drawer {
         if (mFragmentShaderHandle != 0) {
             GLES20.glDeleteShader(mFragmentShaderHandle);
             mFragmentShaderHandle = 0;
+        }
+        if (mTextureIds != null && mTextureIds.length > 0) {
+            GLES20.glDeleteTextures(mTextureIds.length, mTextureIds, 0);
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.example.momo.glesdemo;
 
-import android.opengl.GLES20;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +15,8 @@ import com.example.momo.glesdemo.gles.EGL14Wrapper;
 import com.example.momo.glesdemo.gles.GLES20Drawer;
 
 public class MainActivity extends AppCompatActivity {
+
+    private RenderThread mRenderThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,12 +41,16 @@ public class MainActivity extends AppCompatActivity {
                 startTime = current;
             }
 
-            private RenderThread mRenderThread;
-
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 mRenderThread = new RenderThread(holder.getSurface());
                 mRenderThread.start();
+
+                final Drawable drawable = getResources().getDrawable(R.drawable.texture);
+                mRenderThread.setTextureImage1(((BitmapDrawable) drawable).getBitmap());
+
+                final Drawable drawable2 = getResources().getDrawable(R.drawable.texture2);
+                mRenderThread.setTextureImage2(((BitmapDrawable) drawable2).getBitmap());
             }
 
             @Override
@@ -52,15 +60,29 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
-                mRenderThread.exit();
             }
         });
+
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mRenderThread != null) {
+            mRenderThread.exit();
+        }
     }
 
     private static class RenderThread extends Thread {
 
         private EGL14Wrapper mEglScreen;
         private Surface mSurface;
+
+        private Bitmap mBitmap1;
+        private Bitmap mBitmap2;
+
+        private boolean isSettedBitmap1;
+        private boolean isSettedBitmap2;
 
         private volatile boolean mRunning = true;
         private volatile long mLastTime = 0L;
@@ -102,6 +124,14 @@ public class MainActivity extends AppCompatActivity {
             mRunning = false;
         }
 
+        public void setTextureImage1(Bitmap bitmap) {
+            mBitmap1 = bitmap;
+        }
+
+        public void setTextureImage2(Bitmap bitmap) {
+            mBitmap2 = bitmap;
+        }
+
         private void ensureEgl(Surface surface) {
             if (mEglScreen == null) {
                 mEglScreen = new EGL14Wrapper();
@@ -116,6 +146,14 @@ public class MainActivity extends AppCompatActivity {
 
             if (drawer == null) {
                 drawer = new GLES20Drawer();
+            }
+            if (!isSettedBitmap1 && mBitmap1 != null && !mBitmap1.isRecycled()) {
+                drawer.setTexture1(mBitmap1);
+                isSettedBitmap1 = true;
+            }
+            if (!isSettedBitmap2 && mBitmap2 != null && !mBitmap2.isRecycled()) {
+                drawer.setTexture2(mBitmap2);
+                isSettedBitmap2 = true;
             }
             drawer.draw();
         }
