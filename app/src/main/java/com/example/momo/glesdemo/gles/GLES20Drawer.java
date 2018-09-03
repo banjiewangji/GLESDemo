@@ -3,6 +3,8 @@ package com.example.momo.glesdemo.gles;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.opengl.Matrix;
+import android.renderscript.Matrix4f;
 import android.util.Size;
 
 import java.nio.Buffer;
@@ -89,9 +91,10 @@ public class GLES20Drawer {
             "attribute vec4 vPosition;\n" +
                     "attribute vec2 a_textureCoord;\n" +
                     "varying vec2 v_textureCoord;\n" +
+                    "uniform mat4 mvpMatrix;\n" +
                     "void main() {\n" +
                     "v_textureCoord = a_textureCoord;\n" +
-                    "gl_Position = vPosition;\n" +
+                    "gl_Position = mvpMatrix * vPosition;\n" +
                     "}";
 
     /**
@@ -124,6 +127,7 @@ public class GLES20Drawer {
     private int mTexCoordHandle;
 
     private int mColorHandle;
+    private int mMvpMatrixHandle;
     private int mTexture1Handle;
     private int mTexture2Handle;
 
@@ -133,6 +137,8 @@ public class GLES20Drawer {
     private boolean isSettedImage2;
     private int[] mTextureIds;
     private Size mScreenSize;
+    private Matrix4f mMvpMatrix4f;
+    private float[] mResult;
 
     public void setTexture1(Bitmap texture) {
         mBitmap1 = texture;
@@ -231,12 +237,14 @@ public class GLES20Drawer {
 
     private void bindShaderAttributes() {
         GLES20.glBindAttribLocation(mVertexShaderHandle, 0, "vPosition");
-        GLES20.glBindAttribLocation(mVertexShaderHandle, 0, "a_textureCoord");
+        GLES20.glBindAttribLocation(mVertexShaderHandle, 1, "a_textureCoord");
+        GLES20.glBindAttribLocation(mVertexShaderHandle, 2, "mvpMatrix");
     }
 
     private void initShaderHandles() {
         mPositionHandle = GLES20.glGetAttribLocation(mProgramHandle, "vPosition");
         mTexCoordHandle = GLES20.glGetAttribLocation(mProgramHandle, "a_textureCoord");
+        mMvpMatrixHandle = GLES20.glGetUniformLocation(mProgramHandle, "mvpMatrix");
         mTexture1Handle = GLES20.glGetUniformLocation(mProgramHandle, "texture1");
         mTexture2Handle = GLES20.glGetUniformLocation(mProgramHandle, "texture2");
         mColorHandle = GLES20.glGetUniformLocation(mProgramHandle, "vColor");
@@ -269,6 +277,13 @@ public class GLES20Drawer {
         GLES20.glUniform4f(mColorHandle, 0.0f, 0.0f, mRed, 1.0f);
         GLES20.glUniform1i(mTexture1Handle, 0);
         GLES20.glUniform1i(mTexture2Handle, 1);
+
+
+        if (mMvpMatrix4f == null) {
+            mResult = new float[16];
+            Matrix.setIdentityM(mResult, 0);
+        }
+        GLES20.glUniformMatrix4fv(mMvpMatrixHandle, 1, false, null, 0);
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureIds[0]);
