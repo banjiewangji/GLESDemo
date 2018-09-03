@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -55,7 +56,9 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
+                if (mRenderThread != null) {
+                    mRenderThread.setScreenSize(new Size(width, height));
+                }
             }
 
             @Override
@@ -161,6 +164,12 @@ public class MainActivity extends AppCompatActivity {
         private void releaseEgl() {
             if (mEglScreen != null) {
                 mEglScreen.release();
+            }
+        }
+
+        private void setScreenSize(Size size) {
+            if (drawer != null) {
+                drawer.setScreenSize(size);
             }
         }
     }

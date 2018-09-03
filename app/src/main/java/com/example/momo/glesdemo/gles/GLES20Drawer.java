@@ -3,6 +3,7 @@ package com.example.momo.glesdemo.gles;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.util.Size;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -114,6 +115,7 @@ public class GLES20Drawer {
                     "}";
 
     private boolean initialized = false;
+    private boolean isSizeChanged = false;
     private int mVertexShaderHandle;
     private int mFragmentShaderHandle;
     private int mProgramHandle;
@@ -130,6 +132,7 @@ public class GLES20Drawer {
     private boolean isSettedImage1;
     private boolean isSettedImage2;
     private int[] mTextureIds;
+    private Size mScreenSize;
 
     public void setTexture1(Bitmap texture) {
         mBitmap1 = texture;
@@ -145,6 +148,12 @@ public class GLES20Drawer {
             initTexture();
             GLES20.glViewport(0, 0, 720, 1280);
             initialized = true;
+        }
+        if (isSizeChanged && mScreenSize != null) {
+            isSizeChanged = false;
+            final int offsetW = (mScreenSize.getWidth() - 720) / 2;
+            final int offsetH = (mScreenSize.getHeight() - 1280) / 2;
+            GLES20.glViewport(offsetW, offsetH, 720, 1280);
         }
         onDraw();
     }
@@ -293,5 +302,10 @@ public class GLES20Drawer {
         if (mTextureIds != null && mTextureIds.length > 0) {
             GLES20.glDeleteTextures(mTextureIds.length, mTextureIds, 0);
         }
+    }
+
+    public void setScreenSize(Size size) {
+        mScreenSize = size;
+        isSizeChanged = true;
     }
 }
