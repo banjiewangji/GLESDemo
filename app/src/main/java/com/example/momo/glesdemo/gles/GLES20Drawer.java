@@ -31,20 +31,20 @@ public class GLES20Drawer {
      * 定义纹理坐标
      */
     private float[] texturePoints = {
-            0f, 0f,   // 0
-            1f, 0f,   // 1
-            0f, 1f,   // 2
-            1f, 1f    // 3
+            0f, 0f, 0f,   // 0
+            1f, 0f, 0f,   // 1
+            0f, 1f, 0f,   // 2
+            1f, 1f, 0f    // 3
     };
 
     /**
      * 定义纹理坐标
      */
     private float[] texturePoints_90 = {
-            0f, 1f,   // 0
-            1f, 1f,   // 1
-            0f, 0f,   // 2
-            1f, 0f    // 3
+            0f, 1f, 0f,   // 0
+            1f, 1f, 0f,   // 1
+            0f, 0f, 0f,   // 2
+            1f, 0f, 0f    // 3
     };
 
     /**
@@ -94,7 +94,8 @@ public class GLES20Drawer {
                     "uniform mat4 mvpMatrix;\n" +
                     "void main() {\n" +
                     "v_textureCoord = a_textureCoord;\n" +
-                    "gl_Position = mvpMatrix * vPosition;\n" +
+                    "gl_Position = mvpMatrix * vec4(vPosition.xyz, 1.0);\n" +
+//                    "gl_Position = vPosition;\n" +
                     "}";
 
     /**
@@ -137,7 +138,6 @@ public class GLES20Drawer {
     private boolean isSettedImage2;
     private int[] mTextureIds;
     private Size mScreenSize;
-    private Matrix4f mMvpMatrix4f;
     private float[] mResult;
 
     public void setTexture1(Bitmap texture) {
@@ -267,7 +267,7 @@ public class GLES20Drawer {
         GLES20.glVertexAttribPointer(mPositionHandle, 3, GLES20.GL_FLOAT, false, 12, mPointBuffer);
         GLES20.glEnableVertexAttribArray(mPositionHandle);
 
-        GLES20.glVertexAttribPointer(mTexCoordHandle, 2, GLES20.GL_FLOAT, false, 8, mtextureBuffer);
+        GLES20.glVertexAttribPointer(mTexCoordHandle, 3, GLES20.GL_FLOAT, false, 12, mtextureBuffer);
         GLES20.glEnableVertexAttribArray(mTexCoordHandle);
 
         mRed = (mRed + delta) % 1f;
@@ -278,12 +278,21 @@ public class GLES20Drawer {
         GLES20.glUniform1i(mTexture1Handle, 0);
         GLES20.glUniform1i(mTexture2Handle, 1);
 
-
-        if (mMvpMatrix4f == null) {
+        if (mResult == null && mScreenSize != null) {
             mResult = new float[16];
+
             Matrix.setIdentityM(mResult, 0);
+
+            float[] projection = new float[16];
+            float[] camera = new float[16];
+            Matrix.setLookAtM(camera, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
+            Matrix.orthoM(projection, 0, -1, 1, -1, 1, 1, 3);
+            Matrix.multiplyMM(mResult, 0, projection, 0, camera, 0);
         }
-        GLES20.glUniformMatrix4fv(mMvpMatrixHandle, 1, false, null, 0);
+
+        if (mResult != null) {
+            GLES20.glUniformMatrix4fv(mMvpMatrixHandle, 1, false, mResult, 0);
+        }
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureIds[0]);
